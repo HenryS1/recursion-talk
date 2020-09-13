@@ -1,5 +1,5 @@
 #+options: num:nil toc:nil
-#+TITLE:  Recursion in Scala and Haskell
+#+TITLE:  Recursion in Scala, Haskell (and Lisp)
 #+AUTHOR: Henry Steere
 #+REVEAL_THEME: black
 
@@ -124,8 +124,7 @@ accumulator.
 
 * Cats includes a trampoline
 
-It's called ~Eval~. Use ~defer~ to thunk something and ~value~ to
-force evaluation.
+Use ~defer~ to thunk and ~value~ to evaluate.
 
 #+begin_src scala
   import cats.Eval
@@ -142,9 +141,6 @@ force evaluation.
 scala> Recursion.listSum(List.range(1,10000)).value
 res1: Int = 49995000
 #+end_src
-
-~Eval~ also let's you define stack safe mutually recursive functions.
-The JVM doesn't support mutually tail recursive functions.
 
 * Tail recursion modulo cons
 
@@ -167,7 +163,7 @@ A monoid has an associative binary operation.
   (define (range-sm n) 
     (if (< n 1)
         0
-        (cons (- n 1) (range (- n 1)))))
+        (+ (- n 1) (range (- n 1)))))
 #+end_src
 
 This optimization is less common than tail recursion.
@@ -197,7 +193,7 @@ It's actually got an implicit trampoline.
   y = 9 : _
 #+end_src
 
-* Scala Streams/LazyLists are similar
+* Scala Streams are similar
 
 #+begin_src scala
   def downFrom(n: Int): Stream[Int] = 
@@ -225,3 +221,41 @@ Recursion in Monads isn't tail recursive.
 
 But Haskell's laziness rescues us again.
 
+* Unfortunately Scala overflows
+
+#+begin_src scala
+  def contrived(l: List[Int]): Option[Int] = safeTail(l)
+    .flatMap(contrived).orElse(l.headOption)
+#+end_src
+#+begin_src shell
+scala> Recursion.contrived(List.range(1, 10000))
+java.lang.StackOverflowError
+#+end_src
+
+This actually depends on the monad.
+
+* Cats makes up for it with tailRecM
+
+Repeatedly calls a function returning a monadic value of Either until
+the either is a Right.
+
+#+begin_src scala
+  def moreContrived(l: List[Int])(implicit m: Monad[Option]): Option[Int] = {
+    m.tailRecM(l) {
+      case Nil => None
+      case r::Nil => Some(Right(r))
+      case r::rs => Some(Left(rs))
+    }
+  }
+#+end_src
+
+#+begin_src shell
+scala> Recursion.moreContrived(List.range(1,10000))
+res1: Option[Int] = Some(9999)
+#+end_src
+
+* Recursion is useful
+
+So use it (safely).
+
+Thanks for listening!
