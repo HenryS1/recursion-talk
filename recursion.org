@@ -1,0 +1,227 @@
+#+options: num:nil toc:nil
+#+TITLE:  Recursion in Scala and Haskell
+#+AUTHOR: Henry Steere
+#+REVEAL_THEME: black
+
+* Recursion
+
+Recursion is declarative, but can explode the stack
+
+#+begin_src scala
+  def sum(nums: List[Int]): Int = nums match {
+    case Nil => 0
+    case n::ns => n + sum(ns)
+  }
+#+end_src
+
+#+begin_src bash
+scala> sum(List.range(0, 10000))
+  java.lang.StackOverflowError
+  at scala.collection.immutable.Nil$.equals(List.scala:433)
+  at .sum(<console>:12)
+  at .sum(<console>:13)
+#+end_src
+
+* Iteration in FP
+
+Without mutation of loop variables recursion is the only option for
+purely functional languages like Haskell.
+
+* Tail recursion
+
+If the last statement in a branch of a function definition is a
+recursive call the function is called tail recursive.
+
+#+begin_src scala
+  def sum(nums: List[Int], accum: Int): Int = nums match {
+    case Nil => accum
+    case n::ns => sum(ns, n + accum)
+  }
+#+end_src
+
+Tail calls can be optimized into loops removing the stack frames and
+avoiding overflow.
+
+* Tail recursion is linear
+
+You can't branch and remain tail recursive.
+
+#+reveal_html: <div style="font-size: 36px">
+#+begin_src haskell
+  data Tree a = Node (Tree a) a (Tree a) | Leaf a
+
+  treeSum :: Num a => Tree a -> a
+  treeSum (Leaf n) = n
+  treeSum (Node left v right) = v + (treeSum left) + (treeSum right)
+#+end_src
+#+reveal_html: </div>
+
+Most tree recursion has bounded depth and is safe.
+
+* We can use a stack
+
+But it's imperative
+
+#+begin_src haskell
+    treeSum :: Num a => Tree a -> a
+    treeSum (Leaf e) = e
+    treeSum (Node left v right) = sm [right, left] v
+      where 
+        sm [] res = res
+        sm (Leaf v : rest) res = sm rest (v + res)
+        sm (Node l r v : rest) res = sm (r : l : rest) (v + res)
+#+end_src
+
+* We could also trampoline
+
+Use heap space instead of stack space, because there's more of it.
+Instead of using a stack to remember where you are, use thunks. At
+each step return either the result or another thunk.
+
+#+reveal_html: <div style="font-size: 36px">
+#+begin_src scala
+sealed trait Trampoline[A]
+case class Thunk[A](f: A => (A, Trampoline[A])) extends Trampoline[A]
+case class Result[A] extends Trampoline[A]
+#+end_src
+#+reveal_html: </div>
+
+* Thunking a tree
+
+Construct a chain of thunks describing how to traverse the tree and
+accumulate a result.
+
+#+reveal_html: <div style="font-size: 36px">
+#+begin_src scala
+  def treeSum(tree: Tree[Int]): Trampline[Int] = {
+    def tsTramp(tree: Tree[Int],
+      tramp: Trampoline[Int]): Trampoline[Int] = (tree, tramp) match {
+      case (Leaf(v), tr) => Thunk((vl: Int) => (vl + v, tr))
+      case (Node(lft, v, rght), tr) => tsTramp(lft, Thunk { (acc: Int) =>
+        (acc + v, tsTramp(rght, tr))
+      })
+    }
+  }
+#+end_src
+#+reveal_html: </div>
+
+* Evaluating the trampoline
+
+At each step pass the accumulated value to the thunk to get the next
+accumulator.
+
+#+reveal_html: <div style="font-size: 32px">
+#+begin_src scala
+  @tailrec
+  final def unwind(acc: Int, tramp: Trampoline[Int]): Int = tramp match {
+    case Thunk(f) => val (nextAcc, nextTramp) = f(acc)
+        unwind(nextAcc, nextTramp)
+    case Result(v) => acc + v
+  }
+  unwind(0, tsTramp(tree, Result(0)))
+#+end_src
+#+reveal_html: </div>
+
+* Cats includes a trampoline
+
+It's called ~Eval~. Use ~defer~ to thunk something and ~value~ to
+force evaluation.
+
+#+begin_src scala
+  import cats.Eval
+  import cats.implicits._
+
+  object Recursion {
+    def listSum(l: List[Int]): Eval[Int] =
+      if (l.isEmpty) Eval.now(0)
+      else Eval.defer(listSum(l.tail).map(_ + l.head))
+  }
+#+end_src
+
+#+begin_src shell
+scala> Recursion.listSum(List.range(1,10000)).value
+res1: Int = 49995000
+#+end_src
+
+~Eval~ also let's you define stack safe mutually recursive functions.
+The JVM doesn't support mutually tail recursive functions.
+
+* Tail recursion modulo cons
+
+If the final call in a recursive invokes cons it can be automatically
+transformed into an iteration that incrementally constructs the result
+list.
+
+#+begin_src scheme
+  (define (down-from n)
+    (if (< n 1) 
+        '()
+        (cons (- n 1) (down-from (- n 1)))))
+#+end_src
+
+* Actually works for any monoid
+
+A monoid has an associative binary operation. 
+
+#+begin_src scheme
+  (define (range-sm n) 
+    (if (< n 1)
+        0
+        (cons (- n 1) (range (- n 1)))))
+#+end_src
+
+This optimization is less common than tail recursion.
+
+* (Not) tail recursion modulo cons in Haskell
+
+Haskell seems to have tail recursion modulo cons
+
+#+begin_src haskell
+  downFrom :: Int -> [Int]
+  downFrom n = if n < 1 then [] else (n - 1) : range (n - 1)
+#+end_src
+#+begin_src shell
+  Prelude> length (downFrom 100000)
+  100000
+#+end_src
+
+* Laziness thunks by default
+
+It's actually got an implicit trampoline.
+
+#+begin_src shell
+  Prelude> let r = downFrom 10 :: [Int]
+  Prelude> head y 
+  9
+  Prelude> :sprint y 
+  y = 9 : _
+#+end_src
+
+* Scala Streams/LazyLists are similar
+
+#+begin_src scala
+  def downFrom(n: Int): Stream[Int] = 
+    if (n < 1) Stream.empty
+    else (n - 1) #:: downFrom(n - 1)
+#+end_src
+#+begin_src shell
+scala> Recursion.downFrom(1000000)
+res1: Stream[Int] = Stream(999999, ?)
+#+end_src
+
+* Recursion in Monads
+
+Recursion in Monads isn't tail recursive.
+
+#+begin_src haskell
+  safeTail :: [a] -> Maybe [a]
+  safeTail [] = Nothing
+  safeTail (x : xs) = Just xs
+
+  contrived :: [a] -> Maybe a
+  contrived [x] = Just x
+  contrived other = safeTail other >>= contrived
+#+end_src
+
+But Haskell's laziness rescues us again.
+
