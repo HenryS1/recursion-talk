@@ -1,4 +1,4 @@
-#+options: num:nil toc:nil
+#+options: num:nil toc:nil reveal_single_file:t
 #+TITLE:  Recursion in Scala, Haskell (and Lisp)
 #+AUTHOR: Henry Steere
 #+REVEAL_THEME: black
