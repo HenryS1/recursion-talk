@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Recursion in Scala, Haskell (and Lisp)</title>
+<meta name="author" content="(Henry Steere)"/>
+<style type="text/css">
+.underline { text-decoration: underline; }
+</style>
+<link rel="stylesheet" href="file:///Users/henrysteere/reveal.js/css/reveal.css"/>
+
+<link rel="stylesheet" href="file:///Users/henrysteere/reveal.js/css/theme/black.css" id="theme"/>
+
+
+<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+<script>
+    if( window.location.search.match( /print-pdf/gi ) ) {
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'file:///Users/henrysteere/reveal.js/css/print/pdf.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    }
+</script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+<section id="sec-title-slide"><h1 class="title">Recursion in Scala, Haskell (and Lisp)</h1><h2 class="author">Henry Steere</h2>
+</section>
+
+<section>
+<section id="slide-org0c63b14">
+<h2 id="org0c63b14">Recursion</h2>
+<p>
+Recursion is declarative, but can explode the stack
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">sum</span>(nums<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">List</span>[<span style="color: #a991f1;">Int</span>])<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span> <span style="color: #51afef;">=</span> nums <span style="color: #51afef;">match</span> {
+  <span style="color: #51afef;">case</span> <span style="color: #a991f1;">Nil</span> <span style="color: #51afef;">=&gt;</span> <span style="color: #a991f1;">0</span>
+  <span style="color: #51afef;">case</span> <span style="color: #DFDFDF;">n</span><span style="color: #FCCE7B;">::</span><span style="color: #DFDFDF;">ns</span> <span style="color: #51afef;">=&gt;</span> n + sum(ns)
+}
+</code></pre>
+</div>
+
+<div class="org-src-container">
+
+<pre  class="src src-bash"><code trim>scala&gt; sum(List.range(0, 10000))
+  java.lang.StackOverflowError
+  at scala.collection.immutable.Nil$.equals(List.scala:433)
+  at .sum(&lt;console&gt;:12)
+  at .sum(&lt;console&gt;:13)
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org0c5a6b9">
+<h2 id="org0c5a6b9">Iteration in FP</h2>
+<p>
+Without mutation of loop variables recursion is the only option for
+purely functional languages like Haskell.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-org17a0b67">
+<h2 id="org17a0b67">Tail recursion</h2>
+<p>
+If the last statement in a branch of a function definition is a
+recursive call the function is called tail recursive.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">sum</span>(nums<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">List</span>[<span style="color: #a991f1;">Int</span>], accum<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span>)<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span> <span style="color: #51afef;">=</span> nums <span style="color: #51afef;">match</span> {
+  <span style="color: #51afef;">case</span> <span style="color: #a991f1;">Nil</span> <span style="color: #51afef;">=&gt;</span> accum
+  <span style="color: #51afef;">case</span> <span style="color: #DFDFDF;">n</span><span style="color: #FCCE7B;">::</span><span style="color: #DFDFDF;">ns</span> <span style="color: #51afef;">=&gt;</span> sum(ns, n + accum)
+}
+</code></pre>
+</div>
+
+<p>
+Tail calls can be optimized into loops removing the stack frames and
+avoiding overflow.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-org676b316">
+<h2 id="org676b316">Tail recursion is linear</h2>
+<p>
+You can't branch and remain tail recursive.
+</p>
+
+<div style="font-size: 36px">
+<div class="org-src-container">
+
+<pre  class="src src-haskell"><code trim><span style="color: #51afef;">data</span> <span style="color: #FCCE7B;">Tree</span> a <span style="color: #DFDFDF;">=</span> <span style="color: #FCCE7B;">Node</span> (<span style="color: #FCCE7B;">Tree</span> a) a (<span style="color: #FCCE7B;">Tree</span> a) <span style="color: #DFDFDF;">|</span> <span style="color: #FCCE7B;">Leaf</span> a
+
+<span style="color: #5cEfFF;">treeSum</span> <span style="color: #DFDFDF;">::</span> <span style="color: #FCCE7B;">Num</span> a <span style="color: #DFDFDF;">=&gt;</span> <span style="color: #FCCE7B;">Tree</span> a <span style="color: #DFDFDF;">-&gt;</span> a
+<span style="color: #5cEfFF;">treeSum</span> (<span style="color: #FCCE7B;">Leaf</span> n) <span style="color: #DFDFDF;">=</span> n
+<span style="color: #5cEfFF;">treeSum</span> (<span style="color: #FCCE7B;">Node</span> left v right) <span style="color: #DFDFDF;">=</span> v <span style="color: #DFDFDF;">+</span> (treeSum left) <span style="color: #DFDFDF;">+</span> (treeSum right)
+</code></pre>
+</div>
+</div>
+
+<p>
+Most tree recursion has bounded depth and is safe.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-orgf37f89a">
+<h2 id="orgf37f89a">We can use a stack</h2>
+<p>
+But it's imperative
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-haskell"><code trim><span style="color: #5cEfFF;">treeSum</span> <span style="color: #DFDFDF;">::</span> <span style="color: #FCCE7B;">Num</span> a <span style="color: #DFDFDF;">=&gt;</span> <span style="color: #FCCE7B;">Tree</span> a <span style="color: #DFDFDF;">-&gt;</span> a
+<span style="color: #5cEfFF;">treeSum</span> (<span style="color: #FCCE7B;">Leaf</span> e) <span style="color: #DFDFDF;">=</span> e
+<span style="color: #5cEfFF;">treeSum</span> (<span style="color: #FCCE7B;">Node</span> left v right) <span style="color: #DFDFDF;">=</span> sm [right, left] v
+  <span style="color: #51afef;">where</span> 
+    sm <span style="color: #FCCE7B;">[]</span> res <span style="color: #DFDFDF;">=</span> res
+    sm (<span style="color: #FCCE7B;">Leaf</span> v <span style="color: #FCCE7B;">:</span> rest) res <span style="color: #DFDFDF;">=</span> sm rest (v <span style="color: #DFDFDF;">+</span> res)
+    sm (<span style="color: #FCCE7B;">Node</span> l r v <span style="color: #FCCE7B;">:</span> rest) res <span style="color: #DFDFDF;">=</span> sm (r <span style="color: #FCCE7B;">:</span> l <span style="color: #FCCE7B;">:</span> rest) (v <span style="color: #DFDFDF;">+</span> res)
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org0be16cb">
+<h2 id="org0be16cb">We could also trampoline</h2>
+<p>
+Use heap space instead of stack space, because there's more of it.
+Instead of using a stack to remember where you are, use thunks. At
+each step return either the result or another thunk.
+</p>
+
+<div style="font-size: 36px">
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #C57BDB;">sealed</span> <span style="color: #51afef;">trait</span> <span style="color: #FCCE7B;">Trampoline</span>[<span style="color: #a991f1;">A</span>]
+<span style="color: #51afef;">case</span> <span style="color: #51afef;">class</span> <span style="color: #FCCE7B;">Thunk</span>[<span style="color: #a991f1;">A</span>](f<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">A</span> <span style="color: #51afef;">=&gt;</span> (<span style="color: #a991f1;">A</span>, <span style="color: #a991f1;">Trampoline</span>[<span style="color: #a991f1;">A</span>])) <span style="color: #51afef;">extends</span> <span style="color: #FCCE7B;">Trampoline</span>[<span style="color: #a991f1;">A</span>]
+<span style="color: #51afef;">case</span> <span style="color: #51afef;">class</span> <span style="color: #FCCE7B;">Result</span>[<span style="color: #a991f1;">A</span>] <span style="color: #51afef;">extends</span> <span style="color: #FCCE7B;">Trampoline</span>[<span style="color: #a991f1;">A</span>]
+</code></pre>
+</div>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org165186e">
+<h2 id="org165186e">Thunking a tree</h2>
+<p>
+Construct a chain of thunks describing how to traverse the tree and
+accumulate a result.
+</p>
+
+<div style="font-size: 36px">
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">treeSum</span>(tree<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Tree</span>[<span style="color: #a991f1;">Int</span>])<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Trampline</span>[<span style="color: #a991f1;">Int</span>] <span style="color: #51afef;">=</span> {
+  <span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">tsTramp</span>(tree<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Tree</span>[<span style="color: #a991f1;">Int</span>],
+    tramp<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Trampoline</span>[<span style="color: #a991f1;">Int</span>])<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Trampoline</span>[<span style="color: #a991f1;">Int</span>] <span style="color: #51afef;">=</span> (tree, tramp) <span style="color: #51afef;">match</span> {
+    <span style="color: #51afef;">case</span> (<span style="color: #FCCE7B;">Leaf</span>(<span style="color: #DFDFDF;">v</span>), <span style="color: #DFDFDF;">tr</span>) <span style="color: #51afef;">=&gt;</span> <span style="color: #a991f1;">Thunk</span>((vl<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span>) <span style="color: #51afef;">=&gt;</span> (vl + v, tr))
+    <span style="color: #51afef;">case</span> (<span style="color: #FCCE7B;">Node</span>(<span style="color: #DFDFDF;">lft</span>, <span style="color: #DFDFDF;">v</span>, <span style="color: #DFDFDF;">rght</span>), <span style="color: #DFDFDF;">tr</span>) <span style="color: #51afef;">=&gt;</span> tsTramp(lft, <span style="color: #a991f1;">Thunk</span> { (acc<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span>) <span style="color: #51afef;">=&gt;</span>
+      (acc + v, tsTramp(rght, tr))
+    })
+  }
+}
+</code></pre>
+</div>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org10418a1">
+<h2 id="org10418a1">Evaluating the trampoline</h2>
+<p>
+At each step pass the accumulated value to the thunk to get the next
+accumulator.
+</p>
+
+<div style="font-size: 32px">
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #C57BDB; font-weight: bold;">@tailrec</span>
+<span style="color: #C57BDB;">final</span> <span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">unwind</span>(acc<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span>, tramp<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Trampoline</span>[<span style="color: #a991f1;">Int</span>])<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span> <span style="color: #51afef;">=</span> tramp <span style="color: #51afef;">match</span> {
+  <span style="color: #51afef;">case</span> <span style="color: #FCCE7B;">Thunk</span>(<span style="color: #DFDFDF;">f</span>) <span style="color: #51afef;">=&gt;</span> <span style="color: #51afef;">val</span> (<span style="color: #DFDFDF;">nextAcc</span>, <span style="color: #DFDFDF;">nextTramp</span>) <span style="color: #51afef;">=</span> f(acc)
+      unwind(nextAcc, nextTramp)
+  <span style="color: #51afef;">case</span> <span style="color: #FCCE7B;">Result</span>(<span style="color: #DFDFDF;">v</span>) <span style="color: #51afef;">=&gt;</span> acc + v
+}
+unwind(<span style="color: #a991f1;">0</span>, tsTramp(tree, <span style="color: #a991f1;">Result</span>(<span style="color: #a991f1;">0</span>)))
+</code></pre>
+</div>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org32082ff">
+<h2 id="org32082ff">Cats includes a trampoline</h2>
+<p>
+Use <code>defer</code> to thunk and <code>value</code> to evaluate.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #51afef;">import</span> cats.<span style="color: #a991f1;">Eval</span>
+<span style="color: #51afef;">import</span> cats.implicits.<span style="color: #51afef;">_</span>
+
+<span style="color: #51afef;">object</span> <span style="color: #a991f1;">Recursion</span> {
+  <span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">listSum</span>(l<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">List</span>[<span style="color: #a991f1;">Int</span>])<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Eval</span>[<span style="color: #a991f1;">Int</span>] <span style="color: #51afef;">=</span>
+    <span style="color: #51afef;">if</span> (l.isEmpty) <span style="color: #a991f1;">Eval</span>.now(<span style="color: #a991f1;">0</span>)
+    <span style="color: #51afef;">else</span> <span style="color: #a991f1;">Eval</span>.defer(listSum(l.tail).map(<span style="color: #51afef;">_</span> + l.head))
+}
+</code></pre>
+</div>
+
+<div class="org-src-container">
+
+<pre  class="src src-shell"><code trim>scala&gt; Recursion.listSum(List.range(1,10000)).value
+res1: <span style="color: #DFDFDF;">Int</span> = 49995000
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org22994d0">
+<h2 id="org22994d0">Tail recursion modulo cons</h2>
+<p>
+If the final call in a recursive invokes cons it can be automatically
+transformed into an iteration that incrementally constructs the result
+list.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-scheme"><code trim>(<span style="color: #51afef;">define</span> (<span style="color: #5cEfFF;">down-from</span> n)
+  (<span style="color: #51afef;">if</span> (&lt; n 1) 
+      '()
+      (cons (- n 1) (down-from (- n 1)))))
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org06c87f0">
+<h2 id="org06c87f0">Actually works for any monoid</h2>
+<p>
+A monoid has an associative binary operation. 
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-scheme"><code trim>(<span style="color: #51afef;">define</span> (<span style="color: #5cEfFF;">range-sm</span> n) 
+  (<span style="color: #51afef;">if</span> (&lt; n 1)
+      0
+      (+ (- n 1) (range (- n 1)))))
+</code></pre>
+</div>
+
+<p>
+This optimization is less common than tail recursion.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-org7cd4b6c">
+<h2 id="org7cd4b6c">(Not) tail recursion modulo cons in Haskell</h2>
+<p>
+Haskell seems to have tail recursion modulo cons
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-haskell"><code trim><span style="color: #5cEfFF;">downFrom</span> <span style="color: #DFDFDF;">::</span> <span style="color: #FCCE7B;">Int</span> <span style="color: #DFDFDF;">-&gt;</span> [<span style="color: #FCCE7B;">Int</span>]
+<span style="color: #5cEfFF;">downFrom</span> n <span style="color: #DFDFDF;">=</span> <span style="color: #51afef;">if</span> n <span style="color: #DFDFDF;">&lt;</span> 1 <span style="color: #51afef;">then</span> <span style="color: #FCCE7B;">[]</span> <span style="color: #51afef;">else</span> (n <span style="color: #DFDFDF;">-</span> 1) <span style="color: #FCCE7B;">:</span> range (n <span style="color: #DFDFDF;">-</span> 1)
+</code></pre>
+</div>
+<div class="org-src-container">
+
+<pre  class="src src-shell"><code trim>Prelude&gt; length (downFrom 100000)
+100000
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-orgf084998">
+<h2 id="orgf084998">Laziness thunks by default</h2>
+<p>
+It's actually got an implicit trampoline.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-shell"><code trim>Prelude&gt; let <span style="color: #DFDFDF;">r</span> = downFrom 10 :: [Int]
+Prelude&gt; head y 
+9
+Prelude&gt; :sprint y 
+<span style="color: #DFDFDF;">y</span> = 9 : _
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-orgea91df0">
+<h2 id="orgea91df0">Scala Streams are similar</h2>
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">downFrom</span>(n<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Int</span>)<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Stream</span>[<span style="color: #a991f1;">Int</span>] <span style="color: #51afef;">=</span> 
+  <span style="color: #51afef;">if</span> (n &lt; <span style="color: #a991f1;">1</span>) <span style="color: #a991f1;">Stream</span>.empty
+  <span style="color: #51afef;">else</span> (n - <span style="color: #a991f1;">1</span>) #:: downFrom(n - <span style="color: #a991f1;">1</span>)
+</code></pre>
+</div>
+<div class="org-src-container">
+
+<pre  class="src src-shell"><code trim>scala&gt; Recursion.downFrom(1000000)
+res1: <span style="color: #DFDFDF;">Stream</span>[Int] = Stream(999999, ?)
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-orga6b844d">
+<h2 id="orga6b844d">Recursion in Monads</h2>
+<p>
+Recursion in Monads isn't tail recursive.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-haskell"><code trim><span style="color: #5cEfFF;">safeTail</span> <span style="color: #DFDFDF;">::</span> [a] <span style="color: #DFDFDF;">-&gt;</span> <span style="color: #FCCE7B;">Maybe</span> [a]
+<span style="color: #5cEfFF;">safeTail</span> <span style="color: #FCCE7B;">[]</span> <span style="color: #DFDFDF;">=</span> <span style="color: #FCCE7B;">Nothing</span>
+<span style="color: #5cEfFF;">safeTail</span> (x <span style="color: #FCCE7B;">:</span> xs) <span style="color: #DFDFDF;">=</span> <span style="color: #FCCE7B;">Just</span> xs
+
+<span style="color: #5cEfFF;">contrived</span> <span style="color: #DFDFDF;">::</span> [a] <span style="color: #DFDFDF;">-&gt;</span> <span style="color: #FCCE7B;">Maybe</span> a
+<span style="color: #5cEfFF;">contrived</span> [x] <span style="color: #DFDFDF;">=</span> <span style="color: #FCCE7B;">Just</span> x
+<span style="color: #5cEfFF;">contrived</span> other <span style="color: #DFDFDF;">=</span> safeTail other <span style="color: #DFDFDF;">&gt;&gt;=</span> contrived
+</code></pre>
+</div>
+
+<p>
+But Haskell's laziness rescues us again.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-org686c31b">
+<h2 id="org686c31b">Unfortunately Scala overflows</h2>
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">contrived</span>(l<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">List</span>[<span style="color: #a991f1;">Int</span>])<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Option</span>[<span style="color: #a991f1;">Int</span>] <span style="color: #51afef;">=</span> safeTail(l)
+  .flatMap(contrived).orElse(l.headOption)
+</code></pre>
+</div>
+<div class="org-src-container">
+
+<pre  class="src src-shell"><code trim>scala&gt; Recursion.contrived(List.range(1, 10000))
+java.lang.StackOverflowError
+</code></pre>
+</div>
+
+<p>
+This actually depends on the monad.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-org2b7845d">
+<h2 id="org2b7845d">Cats makes up for it with tailRecM</h2>
+<p>
+Repeatedly calls a function returning a monadic value of Either until
+the either is a Right.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-scala"><code trim><span style="color: #51afef;">def</span> <span style="color: #5cEfFF;">moreContrived</span>(l<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">List</span>[<span style="color: #a991f1;">Int</span>])(<span style="color: #C57BDB;">implicit</span> m<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Monad</span>[<span style="color: #a991f1;">Option</span>])<span style="color: #51afef;">:</span> <span style="color: #FCCE7B;">Option</span>[<span style="color: #a991f1;">Int</span>] <span style="color: #51afef;">=</span> {
+  m.tailRecM(l) {
+    <span style="color: #51afef;">case</span> <span style="color: #a991f1;">Nil</span> <span style="color: #51afef;">=&gt;</span> <span style="color: #a991f1;">None</span>
+    <span style="color: #51afef;">case</span> <span style="color: #DFDFDF;">r</span><span style="color: #FCCE7B;">::</span><span style="color: #a991f1;">Nil</span> <span style="color: #51afef;">=&gt;</span> <span style="color: #a991f1;">Some</span>(<span style="color: #a991f1;">Right</span>(r))
+    <span style="color: #51afef;">case</span> <span style="color: #DFDFDF;">r</span><span style="color: #FCCE7B;">::</span><span style="color: #DFDFDF;">rs</span> <span style="color: #51afef;">=&gt;</span> <span style="color: #a991f1;">Some</span>(<span style="color: #a991f1;">Left</span>(rs))
+  }
+}
+</code></pre>
+</div>
+
+<div class="org-src-container">
+
+<pre  class="src src-shell"><code trim>scala&gt; Recursion.moreContrived(List.range(1,10000))
+res1: <span style="color: #DFDFDF;">Option</span>[Int] = Some(9999)
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org8ab3e85">
+<h2 id="org8ab3e85">Recursion is useful</h2>
+<p>
+So use it (safely).
+</p>
+
+<p>
+Thanks for listening!
+</p>
+</section>
+</section>
+</div>
+</div>
+<script src="file:///Users/henrysteere/reveal.js/js/reveal.js"></script>
+
+<script>
+// Full list of configuration options available here:
+// https://github.com/hakimel/reveal.js#configuration
+Reveal.initialize({
+multiplex: {
+    secret: '', // null if client
+    id: '', // id, obtained from socket.io server
+    url: '' // Location of socket.io server
+},
+
+// Optional libraries used to extend on reveal.js
+dependencies: [
+ { src: 'file:///Users/henrysteere/reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+ { src: 'file:///Users/henrysteere/reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'file:///Users/henrysteere/reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'file:///Users/henrysteere/reveal.js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+ { src: 'file:///Users/henrysteere/reveal.js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }]
+});
+</script>
+</body>
+</html>
